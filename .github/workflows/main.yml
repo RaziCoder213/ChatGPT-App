@@ -26,9 +26,9 @@ jobs:
 
     - name: Create RDP User
       run: |
-        $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
-        New-LocalUser -Name "runneradmin" -Password $password -FullName "Runner Admin" -Description "RDP user"
-        Add-LocalGroupMember -Group "Administrators" -Member "runneradmin"
+        $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!3" -Force
+        New-LocalUser -Name "admin" -Password $password -FullName "Runner Admin" -Description "RDP user"
+        Add-LocalGroupMember -Group "Administrators" -Member "admin"
 
     - name: Set RDP Configurations
       run: echo "Set RDP configurations to 16GB RAM and 6th processor"
