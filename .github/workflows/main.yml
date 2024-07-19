@@ -27,7 +27,7 @@ jobs:
     - name: Create RDP User
       run: |
         $password = ConvertTo-SecureString -AsPlainText "razi2" -Force
-        New-LocalUser -Name "runneradmin" -Password $password -FullName "Runner Admin" -Description "RDP user"
+        New-LocalUser -Name "admin" -Password $password -FullName "Runner Admin" -Description "RDP user"
         Add-LocalGroupMember -Group "Administrators" -Member "admin"
 
     - name: Set RDP Configurations
