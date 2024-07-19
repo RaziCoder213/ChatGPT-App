@@ -4,25 +4,46 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-
     runs-on: windows-latest
 
     steps:
-    - name: Download
+    - name: Download Ngrok
       run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-    - name: Extract
-      run: Expand-Archive ngrok.zip
-    - name: Auth
+
+    - name: Extract Ngrok
+      run: Expand-Archive ngrok.zip -DestinationPath ngrok
+
+    - name: Authenticate Ngrok
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-    - name: Enable TS
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+    - name: Enable Remote Desktop
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+
+    - name: Create RDP User
+      run: |
+        $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
+        New-LocalUser -Name "runneradmin" -Password $password -FullName "Runner Admin" -Description "RDP user"
+        Add-LocalGroupMember -Group "Administrators" -Member "runneradmin"
+
     - name: Set RDP Configurations
-      # Note: This step is a placeholder. Setting hardware configurations needs to be done on the host/VM setup.
       run: echo "Set RDP configurations to 16GB RAM and 6th processor"
-    - name: Create Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389
+      # Note: Adjusting hardware configurations like RAM and CPU must be done outside of GitHub Actions and directly on the host or VM.
+
+    - name: Start Ngrok Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389 > ngrok_output.log & Start-Sleep -Seconds 10
+
+    - name: Get Ngrok Public URL
+      run: |
+        $output = Get-Content ngrok_output.log
+        $matches = [regex]::Matches($output, 'tcp://[^\s]+')
+        if ($matches.Count -gt 0) {
+          $public_url = $matches[0].Value
+          echo "Ngrok tunnel URL: $public_url"
+        } else {
+          echo "Failed to get Ngrok URL"
+        }
