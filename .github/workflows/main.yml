@@ -26,35 +26,46 @@ jobs:
 
     - name: Create RDP User
       run: |
-        $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!3" -Force
-        New-LocalUser -Name "admin" -Password $password -FullName "Runner Admin" -Description "RDP user"
-        Add-LocalGroupMember -Group "Administrators" -Member "admin"
+        $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
+        New-LocalUser -Name "runneradmin" -Password $password -FullName "Runner Admin" -Description "RDP user"
+        Add-LocalGroupMember -Group "Administrators" -Member "runneradmin"
 
     - name: Set RDP Configurations
       run: echo "Set RDP configurations to 16GB RAM and 6th processor"
       # Note: Adjusting hardware configurations like RAM and CPU must be done outside of GitHub Actions and directly on the host or VM.
 
     - name: Start Ngrok Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389 > ngrok_output.log 2>&1 & Start-Sleep -Seconds 15
+      run: |
+        .\ngrok\ngrok.exe tcp 3389 > ngrok_output.log 2>&1 &
+        Start-Sleep -Seconds 15
+        Get-Content ngrok_output.log
 
     - name: Display Ngrok Output
       run: |
-        $output = Get-Content ngrok_output.log
-        Write-Output "Ngrok output:"
-        Write-Output $output
+        if (Test-Path ngrok_output.log) {
+          Write-Output "Ngrok output:"
+          Get-Content ngrok_output.log
+        } else {
+          Write-Error "Ngrok output log not found."
+        }
 
     - name: Get Ngrok Public URL
       run: |
-        $output = Get-Content ngrok_output.log
-        if ($null -eq $output) {
-          Write-Error "Ngrok output is empty or not found."
-          exit 1
-        }
-        $matches = [regex]::Matches($output, 'tcp://[^\s]+')
-        if ($matches.Count -gt 0) {
-          $public_url = $matches[0].Value
-          Write-Output "Ngrok tunnel URL: $public_url"
+        if (Test-Path ngrok_output.log) {
+          $output = Get-Content ngrok_output.log
+          if ($null -eq $output -or $output -eq "") {
+            Write-Error "Ngrok output is empty."
+            exit 1
+          }
+          $matches = [regex]::Matches($output, 'tcp://[^\s]+')
+          if ($matches.Count -gt 0) {
+            $public_url = $matches[0].Value
+            Write-Output "Ngrok tunnel URL: $public_url"
+          } else {
+            Write-Error "Failed to get Ngrok URL from output."
+            exit 1
+          }
         } else {
-          Write-Error "Failed to get Ngrok URL from output."
+          Write-Error "Ngrok output log not found."
           exit 1
         }
